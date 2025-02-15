@@ -12,7 +12,7 @@ default_args = {
 
 # Initialize the DAG
 dag = DAG(
-    'dummy_dag',  # DAG name
+    'dummy_dag2',  # DAG name
     default_args=default_args,
     description='A simple dummy DAG',
     schedule_interval=None,  # Set to None for manual execution or define a schedule interval

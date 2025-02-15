@@ -1,34 +1,41 @@
-FROM ubuntu:22.04 
+FROM python:3.11-slim
 
-# Arguments
-ARG PYTHON_VER="3.11"
-ARG VENV_NAME="E2E_project"
-ARG RUFF_VER="0.8.4"
+WORKDIR /workspaces
 
-# Environment variables
-ENV VENV_NAME=$VENV_NAME
-ENV PYTHON_VER=$PYTHON_VER
-ENV RUFF_VER=$RUFF_VER
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libffi-dev \
+    libssl-dev \
+    git \
+ && rm -rf /var/lib/apt/lists/*
 
-# Copy files
-RUN mkdir settings
+# Set Airflow home directory
+ENV AIRFLOW_HOME=/workspaces/mlops-course-training-pipeline
+ENV AIRFLOW__CORE__DAGS_FOLDER=${AIRFLOW_HOME}/dags
+ENV AIRFLOW__CORE__PLUGINS_FOLDER=${AIRFLOW_HOME}/plugins
 
-COPY install_uv.sh install_dependencies.sh requirements.txt settings/
-RUN bash ./settings/install_dependencies.sh
-RUN apt-get update && apt-get install -y git
+# Set load examples to False for cleaner setup
+ENV AIRFLOW__CORE__LOAD_EXAMPLES=False
 
-# Set Python environment
-RUN bash ./settings/install_uv.sh $VENV_NAME $PYTHON_VER $RUFF_VER
+# Upgrade pip and install specific version of Apache Airflow
+RUN pip install --upgrade pip && \
+    pip install apache-airflow==2.10.0 
 
-# Install AWS CLI
-RUN curl -s "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip -qq awscliv2.zip && \
-    ./aws/install && \
-    rm -rf awscliv2.zip ./aws
+# Copy requirements.txt and install additional dependencies
+COPY requirements.txt /root/requirements.txt
+RUN pip install -r /root/requirements.txt
 
-# Install Docker (optional, only needed if Docker isn't already installed)
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    && curl -fsSL https://get.docker.com | sh
+EXPOSE 8081
+
+# Initialize Airflow DB and create the admin user
+RUN airflow db init && \
+    airflow users create \
+    --username admin \
+    --firstname admin \
+    --lastname admin \
+    --role Admin \
+    --email admin@example.com \
+    --password admin
+
+CMD ["bash"]

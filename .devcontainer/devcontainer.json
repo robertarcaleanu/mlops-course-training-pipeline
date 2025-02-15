@@ -12,23 +12,10 @@
     },
     "customizations": {
         "vscode": {
-            "settings": {
-                "python.defaultInterpreterPath": "/opt/my_python_dev/bin/python3",
-                "python.selectInterpreter": "/opt/my_python_dev/bin/python3"
-            },
             "extensions": [
-                "ms-python.python",
-                "ms-python.vscode-pylance",
-                "charliermarsh.ruff",
-                "ms-python.debugpy",
-                "ms-toolsai.jupyter",
-                "mechatroner.rainbow-csv",
-                "ms-toolsai.datawrangler",
-                "mhutchie.git-graph"
+                "ms-python.python"
             ]
         }
     },
-    "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ]
+    "forwardPorts": [8081]
 }
