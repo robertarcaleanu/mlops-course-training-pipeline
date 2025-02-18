@@ -1,5 +1,5 @@
 {
-    "name": "UV Python Development",
+    "name": "Airflow & Python Development",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".",
@@ -13,9 +13,18 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "ms-python.python"
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "charliermarsh.ruff",
+                "ms-python.debugpy",
+                "ms-toolsai.jupyter",
+                "mechatroner.rainbow-csv",
+                "ms-toolsai.datawrangler",
+                "mhutchie.git-graph"
             ]
         }
     },
-    "forwardPorts": [8081]
+    "mounts": [
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ]
 }

@@ -171,5 +171,4 @@ cython_debug/
 .pypirc
 
 logs/
-airflow*
-webserver_config.py
+dataset/
