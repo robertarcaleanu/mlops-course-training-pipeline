@@ -23,8 +23,5 @@
                 "mhutchie.git-graph"
             ]
         }
-    },
-    "mounts": [
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ]
+    }
 }

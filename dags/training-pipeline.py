@@ -1,8 +1,9 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 from steps.source import read_csv_from_s3
+from steps.storage import save_model_to_s3
 from steps.train import train_model
 from steps.transform import transform_data
 
@@ -18,6 +19,7 @@ with DAG(
     default_args=default_args,
     schedule_interval=None,
     catchup=False,
+    tags=["ml-course"]
 ) as dag:
 
     # Task to create the temp folder using BashOperator
@@ -39,9 +41,16 @@ with DAG(
         python_callable=transform_data,
     )
 
-    task_train_model = PythonOperator(
+    task_train_model = PythonVirtualenvOperator(
         task_id='train_model',
+        python_version='3.11',
+        requirements=["scikit-learn==1.6.1", "joblib==1.4.2", "pandas==2.0.3", "numpy==1.26.4", "pyarrow"],
         python_callable=train_model
+    )
+
+    task_save_model = PythonOperator(
+        task_id='store_model',
+        python_callable=save_model_to_s3
     )
 
     # Task to remove the temp folder and its contents
@@ -51,4 +60,4 @@ with DAG(
     )
 
     # Task dependencies
-    task_create_temp_folder >> task_load_data >> task_transform_data >> task_train_model >> task_remove_temp_folder
+    task_create_temp_folder >> task_load_data >> task_transform_data >> task_train_model >> task_save_model >> task_remove_temp_folder
