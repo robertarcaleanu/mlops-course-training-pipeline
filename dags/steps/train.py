@@ -1,47 +1,43 @@
+import logging
+
+import joblib
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, mean_squared_error
-from sklearn.model_selection import GridSearchCV, train_test_split
-from transform import Transformer
+from sklearn.model_selection import train_test_split
 
+
+def train_model():
+    logging.info("Starting model training")
+    RandomForestTrainer.train()
+    logging("Model training completed")
 
 class RandomForestTrainer:
     def __init__(self, random_state: int = 42):
         self.random_state = random_state
-        self.model = None
-        self.transformer = Transformer()
 
-    def preprocess_data(self, df: pd.DataFrame, target_column: str):
-        df = self.transformer.transform(df)
+    def _preprocess_data(self, target_column: str):
+        df = pd.read_parquet("temp/dataset-transformed.parquet")
+        X = df.drop(target_column, axis=1)
+        y = df[target_column]
+        return X, y
 
-    def train(self, df: pd.DataFrame, target_column: str, test_size: float = 0.2):
+    def train(self, target_column: str = 'y', test_size: float = 0.3):
         # Preprocess the data
-        X, y = self.preprocess_data(df, target_column)
+        logging.info("Preprocess")
+        X, y = self._preprocess_data(target_column)
 
         # Split into training and testing sets
+        logging.info("Test-Train split")
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state)
-        self.model = RandomForestClassifier(random_state=self.random_state)
 
+        logging.info("Store testing tables")
+        X_test.to_parquet("temp/X_test.parquet")
+        y_test.to_parquet("temp/y_test.parquet")
 
-        # Define the parameter grid for Grid Search
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [None, 10, 20, 30],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4],
-            'max_features': ['auto', 'sqrt', 'log2']
-        }
+        # Initialize the model here
+        logging.info("Model training")
+        model = RandomForestClassifier(random_state=self.random_state)
+        model.fit(X_train, y_train)
 
-        # Perform Grid Search with Cross Validation
-        grid_search = GridSearchCV(estimator=self.model, param_grid=param_grid, 
-                                   cv=5, n_jobs=-1, scoring='accuracy')
-
-        # Fit the Grid Search model
-        grid_search.fit(X_train, y_train)
-
-        # Best parameters from Grid Search
-        print("Best Parameters from Grid Search:", grid_search.best_params_)
-
-        # Train the best model found by Grid Search
-        self.model = grid_search.best_estimator
-        
+        logging.info("Saving model")
+        joblib.dump(model, 'temp/random_forest_model.joblib')
