@@ -1,18 +1,66 @@
 def train_model():
+    import io
     import logging
 
     import joblib
     import pandas as pd
+    from airflow.providers.amazon.aws.hooks.s3 import S3Hook
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import OneHotEncoder
     logging.info("Starting model training")
 
     class RandomForestTrainer:
         def __init__(self, random_state: int = 42):
             self.random_state = random_state
+            self.ONE_HOT_ENCODE_COLUMNS = [
+                "marital",
+                "job",
+                "education",
+                "poutcome",
+                "contact"
+                ]
+            self.s3_hook = S3Hook(aws_conn_id='aws-connection')
+        
+        def _one_hot_encode_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+            logging.info('One-hot encoding categorical columns using sklearn OneHotEncoder')
+
+            # Create an encoder for the categorical columns
+            encoder = OneHotEncoder(sparse=False, drop='first', handle_unknown='ignore')
+            
+            # Fit the encoder and transform the data
+            encoded_array = encoder.fit_transform(df[self.ONE_HOT_ENCODE_COLUMNS])
+            
+            # Get column names for the encoded features
+            encoded_columns = encoder.get_feature_names_out(self.ONE_HOT_ENCODE_COLUMNS)
+            
+            # Convert the encoded array to a DataFrame
+            encoded_df = pd.DataFrame(encoded_array, columns=encoded_columns, index=df.index)
+            
+            # Drop the original categorical columns and concatenate the encoded columns
+            df = df.drop(columns=self.ONE_HOT_ENCODE_COLUMNS)
+            df = pd.concat([df, encoded_df], axis=1)
+            
+            # Save the encoder to S3 for later use
+            self.save_encoder_to_s3(encoder, 'dataset-mlops-robert', 'encoder.joblib')
+
+            return df
+        
+
+        def save_encoder_to_s3(self, encoder, bucket_name: str, key: str):
+            # Serialize the encoder to a binary stream
+            encoder_buffer = io.BytesIO()
+            joblib.dump(encoder, encoder_buffer)
+            encoder_buffer.seek(0)  # Move back to the beginning of the buffer
+            
+            # Upload the encoder to S3
+            self.s3_hook.load_file_obj(encoder_buffer, key, bucket_name=bucket_name, replace=True)
+            logging.info(f'Encoder saved to S3 at s3://{bucket_name}/{key}')
+
 
         def _preprocess_data(self, target_column: str):
             df = pd.read_parquet("temp/dataset-transformed.parquet")
+            df = self._one_hot_encode_columns(df, self.ONE_HOT_ENCODE_COLUMNS)
             X = df.drop(target_column, axis=1)
             y = df[target_column]
             return X, y
