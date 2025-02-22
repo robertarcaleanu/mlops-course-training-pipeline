@@ -3,7 +3,7 @@ from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator, PythonVirtualenvOperator
 from airflow.utils.dates import days_ago
 from steps.source import read_csv_from_s3
-from steps.storage import save_model_to_s3
+from steps.storage import save_object_to_s3
 from steps.train import train_model
 from steps.transform import transform_data
 
@@ -50,7 +50,24 @@ with DAG(
 
     task_save_model = PythonOperator(
         task_id='store_model',
-        python_callable=save_model_to_s3
+        python_callable=save_object_to_s3,
+        op_kwargs={
+            "local_path": "temp/model.joblib",
+            "s3_bucket": 'dataset-mlops-robert',
+            "s3_key": 'model_dag.joblib',
+            "aws_conn_id": 'aws-connection'
+            }
+    )
+
+    task_save_encoder = PythonOperator(
+        task_id='store_encoder',
+        python_callable=save_object_to_s3,
+        op_kwargs={
+            "local_path": "temp/one_hot_encoder.joblib",
+            "s3_bucket": 'dataset-mlops-robert',
+            "s3_key": 'one_hot_encoder.joblib',
+            "aws_conn_id": 'aws-connection'
+            }
     )
 
     # Task to remove the temp folder and its contents
@@ -60,4 +77,8 @@ with DAG(
     )
 
     # Task dependencies
-    task_create_temp_folder >> task_load_data >> task_transform_data >> task_train_model >> task_save_model >> task_remove_temp_folder
+task_create_temp_folder >> task_load_data >> task_transform_data >> task_train_model >> [task_save_model, task_save_encoder]
+
+# Ensure temp folder is removed only after saving model and encoder
+task_save_model >> task_remove_temp_folder
+task_save_encoder >> task_remove_temp_folder
