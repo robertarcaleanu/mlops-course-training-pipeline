@@ -8,15 +8,6 @@ class Transformer:
         self.DROP_COLUMNS = [
 
         ]
-        self.ONE_HOT_ENCODE_COLUMNS = [
-            "marital",
-            "job",
-            "education",
-            "poutcome",
-            "housing",
-            "loan",
-            "contact"
-        ]
         self.BINARY_FEATURES = [
             "housing",
             "loan",
@@ -30,8 +21,6 @@ class Transformer:
         df = df.drop(self.DROP_COLUMNS, axis=1)
         df = self._map_binary_column_to_int(df)
         df = self._map_month_to_int(df)
-        df = self._one_hot_encode_columns(df)
-        df = self._pdays_from_int_to_categories(df)
 
         logging.info('Starting to write data locally')
         df.to_parquet("temp/dataset-transformed.parquet")
@@ -54,14 +43,6 @@ class Transformer:
 
         return df
 
-    def _one_hot_encode_columns(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.info('One-hot encoding categorical columns')
-        df = pd.get_dummies(df, columns=self.ONE_HOT_ENCODE_COLUMNS, drop_first=True)
-        return df
-
-    def _pdays_from_int_to_categories(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.info('Transforming pdays column to categories')
-        return df
     
 def transform_data():
     import logging
